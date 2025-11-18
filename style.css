@@ -1,0 +1,20 @@
+/* Estilos básicos para el contenedor del diagrama */
+#canvas {
+    /* Altura CRUCIAL para que el diagrama se vea */
+    height: 600px; 
+    
+    /* Ancho para que ocupe la mayor parte de la pantalla */
+    width: 90%;   
+    
+    /* Borde opcional para ayudarte a ver dónde está el contenedor */
+    border: 1px solid #ccc; 
+    
+    /* Centrar el contenedor en la página */
+    margin: 20px auto;
+}
+
+/* Estilos de ejemplo para el cuerpo de la página */
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+}

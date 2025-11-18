@@ -1,11 +1,32 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Visor de Diagrama BPMN de Camunda</title>
+    
+    <!-- 1. Tu archivo de estilos personalizados -->
+    <link rel="stylesheet" href="estilo.css">
+
+    <!-- 2. ESTILOS NECESARIOS DEL VISOR bpmn.js (CDN) -->
+    <!-- Estos estilos permiten que los elementos de BPMN se dibujen correctamente -->
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@10.3.0/dist/assets/diagram-js.css">
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@10.3.0/dist/assets/bpmn-font/css/bpmn.css">
+    
 </head>
 <body>
-    hola mundo
+
+    <h1>Mi Diagrama de Proceso BPMN</h1>
+    
+    <!-- 3. Contenedor donde se cargará el diagrama -->
+    <div id="canvas"></div>
+
+    <!-- 4. LIBRERÍA JAVASCRIPT DEL VISOR bpmn.js (CDN) -->
+    <!-- Debe cargarse antes de tu script.js -->
+    <script src="https://unpkg.com/bpmn-js@10.3.0/dist/bpmn-navigated-viewer.development.js"></script>
+    
+    <!-- 5. Tu archivo de script personalizado, que inicializará el visor -->
+    <script src="script.js"></script>
+
 </body>
 </html>
