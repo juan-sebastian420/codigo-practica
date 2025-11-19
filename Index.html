@@ -5,27 +5,244 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Visor de Diagrama BPMN de Camunda</title>
     
-    <!-- 1. Tu archivo de estilos personalizados -->
-    <link rel="stylesheet" href="estilo.css">
-
-    <!-- 2. ESTILOS NECESARIOS DEL VISOR bpmn.js (CDN) -->
-    <!-- Estos estilos permiten que los elementos de BPMN se dibujen correctamente -->
-    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@10.3.0/dist/assets/diagram-js.css">
-    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@10.3.0/dist/assets/bpmn-font/css/bpmn.css">
+    <!-- ESTILOS NECESARIOS DEL VISOR bpmn.js -->
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.0.2/dist/assets/diagram-js.css">
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.0.2/dist/assets/bpmn-js.css">
+    <link rel="stylesheet" href="https://unpkg.com/bpmn-js@17.0.2/dist/assets/bpmn-font/css/bpmn-embedded.css">
     
+    <!-- Iconos de Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tu CSS personalizado -->
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <h1>Mi Diagrama de Proceso BPMN</h1>
+    <h1>
+        Pipeline de CI/CD para Sitio Web
+        <span id="modeIndicator" class="mode-indicator mode-view">
+            <i class="fas fa-eye"></i> Modo Visualización
+        </span>
+    </h1>
     
-    <!-- 3. Contenedor donde se cargará el diagrama -->
+    <div id="status" class="loading">Cargando diagrama BPMN...</div>
+    
+    <!-- Barra de herramientas -->
+    <div class="toolbar">
+        <button class="btn" id="btnZoomIn" title="Acercar (Ctrl + +)">
+            <i class="fas fa-search-plus"></i> Zoom In
+        </button>
+        <button class="btn" id="btnZoomOut" title="Alejar (Ctrl + -)">
+            <i class="fas fa-search-minus"></i> Zoom Out
+        </button>
+        <button class="btn" id="btnZoomFit" title="Ajustar al contenedor (Ctrl + 0)">
+            <i class="fas fa-expand"></i> Ajustar
+        </button>
+        <button class="btn btn-secondary" id="btnToggleMode" title="Cambiar modo (Ctrl + E)">
+            <i class="fas fa-exchange-alt"></i> Modo Edición
+        </button>
+        <button class="btn btn-warning" id="btnViewXML" title="Ver código XML (Ctrl + X)">
+            <i class="fas fa-code"></i> Ver XML
+        </button>
+        <button class="btn btn-secondary" id="btnLoadFile" title="Cargar archivo BPMN">
+            <i class="fas fa-folder-open"></i> Cargar BPMN
+        </button>
+        <button class="btn" id="btnExportSVG" title="Exportar como SVG">
+            <i class="fas fa-file-image"></i> Exportar SVG
+        </button>
+        <button class="btn" id="btnExportPNG" title="Exportar como PNG">
+            <i class="fas fa-image"></i> Exportar PNG
+        </button>
+        <button class="btn" id="btnExportXML" title="Exportar XML">
+            <i class="fas fa-download"></i> Exportar XML
+        </button>
+    </div>
+
+    <!-- Herramientas de edición (solo visible en modo edición) -->
+    <div id="editorTools" class="toolbar">
+        <button class="btn" id="btnUndo" title="Deshacer (Ctrl + Z)">
+            <i class="fas fa-undo"></i> Deshacer
+        </button>
+        <button class="btn" id="btnRedo" title="Rehacer (Ctrl + Y)">
+            <i class="fas fa-redo"></i> Rehacer
+        </button>
+        <button class="btn btn-danger" id="btnDeleteSelected" title="Eliminar seleccionado (Delete)">
+            <i class="fas fa-trash"></i> Eliminar
+        </button>
+    </div>
+    
+    <!-- Input oculto para cargar archivos -->
+    <input type="file" id="fileInput" accept=".bpmn,.xml" style="display: none;">
+    
+    <!-- Contenedor donde se cargará el diagrama -->
     <div id="canvas"></div>
 
-    <!-- 4. LIBRERÍA JAVASCRIPT DEL VISOR bpmn.js (CDN) -->
-    <!-- Debe cargarse antes de tu script.js -->
-    <script src="https://unpkg.com/bpmn-js@10.3.0/dist/bpmn-navigated-viewer.development.js"></script>
+    <!-- Modal para ver/editar XML -->
+    <div id="xmlModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editor de XML BPMN</h2>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            <div>
+                <p>Puedes editar el código XML y aplicar los cambios:</p>
+                <textarea id="xmlEditor"></textarea>
+                <div style="margin-top: 15px; text-align: right;">
+                    <button class="btn btn-secondary" id="btnApplyXML">
+                        <i class="fas fa-check"></i> Aplicar Cambios
+                    </button>
+                    <button class="btn btn-warning" id="btnCopyXML">
+                        <i class="fas fa-copy"></i> Copiar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- XML DEL DIAGRAMA BPMN (oculto) - SIN ESPACIOS EN BLANCO ANTES DEL XML -->
+    <script id="bpmnDiagram" type="text/plain"><?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" 
+    xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" 
+    xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" 
+    xmlns:di="http://www.omg.org/spec/DD/20100524/DI" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    id="bpmn_definitions" 
+    targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_CICD_GitHub" name="Pipeline de CI/CD para Sitio Web" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Push a GitHub">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_1" />
+    <bpmn:task id="Task_1" name="Construir Sitio Web">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_1" targetRef="Task_2" />
+    <bpmn:task id="Task_2" name="Ejecutar Pruebas">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_2" targetRef="Gateway_1" />
+    <bpmn:exclusiveGateway id="Gateway_1" name="Pruebas OK?">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:sequenceFlow id="Flow_4" name="Si" sourceRef="Gateway_1" targetRef="Task_3">
+      <bpmn:conditionExpression xsi:type="bpmn:tFormalExpression">testsPassed = true</bpmn:conditionExpression>
+    </bpmn:sequenceFlow>
+    <bpmn:task id="Task_3" name="Desplegar a Produccion">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_3" targetRef="Task_4" />
+    <bpmn:task id="Task_4" name="Notificar Exito en Slack">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_4" targetRef="EndEvent_1" />
+    <bpmn:endEvent id="EndEvent_1" name="Despliegue Exitoso">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="Flow_5" name="No" sourceRef="Gateway_1" targetRef="Task_5" />
+    <bpmn:task id="Task_5" name="Notificar Fallo en Slack">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_8</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_5" targetRef="EndEvent_2" />
+    <bpmn:endEvent id="EndEvent_2" name="Despliegue Fallido">
+      <bpmn:incoming>Flow_8</bpmn:incoming>
+    </bpmn:endEvent>
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_CICD_GitHub">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="150" y="100" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="130" y="143" width="76" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_1_di" bpmnElement="Task_1">
+        <dc:Bounds x="250" y="78" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_2_di" bpmnElement="Task_2">
+        <dc:Bounds x="400" y="78" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_1_di" bpmnElement="Gateway_1" isMarkerVisible="true">
+        <dc:Bounds x="555" y="93" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="545" y="63" width="70" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_3_di" bpmnElement="Task_3">
+        <dc:Bounds x="670" y="78" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_4_di" bpmnElement="Task_4">
+        <dc:Bounds x="820" y="78" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_1_di" bpmnElement="EndEvent_1">
+        <dc:Bounds x="972" y="100" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="958" y="143" width="64" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_5_di" bpmnElement="Task_5">
+        <dc:Bounds x="670" y="220" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_2_di" bpmnElement="EndEvent_2">
+        <dc:Bounds x="832" y="242" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="818" y="285" width="64" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="186" y="118" />
+        <di:waypoint x="250" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="350" y="118" />
+        <di:waypoint x="400" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="500" y="118" />
+        <di:waypoint x="555" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="605" y="118" />
+        <di:waypoint x="670" y="118" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="630" y="100" width="11" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="770" y="118" />
+        <di:waypoint x="820" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="920" y="118" />
+        <di:waypoint x="972" y="118" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="580" y="143" />
+        <di:waypoint x="580" y="260" />
+        <di:waypoint x="670" y="260" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="588" y="199" width="15" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_8_di" bpmnElement="Flow_8">
+        <di:waypoint x="770" y="260" />
+        <di:waypoint x="832" y="260" />
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions></script>
+
+    <!-- LIBRERÍA JAVASCRIPT DEL VISOR bpmn.js -->
+    <script src="https://unpkg.com/bpmn-js@17.0.2/dist/bpmn-viewer.development.js"></script>
+    <script src="https://unpkg.com/bpmn-js@17.0.2/dist/bpmn-modeler.development.js"></script>
     
-    <!-- 5. Tu archivo de script personalizado, que inicializará el visor -->
+    <!-- Tu JavaScript personalizado -->
     <script src="script.js"></script>
 
 </body>
